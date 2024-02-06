@@ -34,7 +34,7 @@ namespace {
         bool found_end = false;
 
         while (!data.empty()) {
-            auto offset = read<uint32_t, endian>(data);
+            auto offset = peek<uint32_t, endian>(data);
             if (offset == 0) {
                 // nothing left to read
                 found_end = true;
@@ -48,7 +48,6 @@ namespace {
             data = subspan(start, offset);
             // read tags
             auto entries = read<uint16_t, endian>(data);
-            data = subspan(data, sizeof(uint16_t));
 
             if (entries == 0) {
                 return false;
@@ -62,7 +61,6 @@ namespace {
             uint16_t last_tag_id = 0;
             for (auto i = 0; i < entries; ++i) {
                 auto tag_id = read<uint16_t, endian>(data);
-                data = subspan(data, sizeof(uint16_t));
 
                 if (!private_ifd && tag_id <= last_tag_id) {
                     // The entries in an IFD must be sorted in ascending order by Tag
@@ -71,15 +69,9 @@ namespace {
                 last_tag_id = tag_id;
 
                 auto data_type = read<uint16_t, endian>(data);
-                data = subspan(data, sizeof(uint16_t));
-
                 auto data_count = read<uint32_t, endian>(data);
-                data = subspan(data, sizeof(uint32_t));
-
                 auto data_offset_before_offset = data;
-
                 auto data_offset = read<uint32_t, endian>(data);
-                data = subspan(data, sizeof(uint32_t));
 
                 // https://www.awaresystems.be/imaging/tiff/tifftags.html
                 uint32_t required_type = 0;
@@ -315,8 +307,8 @@ namespace {
     template<std::endian endian>
     std::span<const uint8_t> read_tif(std::span<const uint8_t> data) {
         const auto start = data;
-        auto offset = sizeof(uint32_t);
-        data = subspan(start, offset);
+
+        skip<decltype(SIGNATURE_BIG)>(data);
 
         uint32_t length = 0;
         bool has_image_data = false;
@@ -335,9 +327,9 @@ namespace {
 }
 
 std::span<const uint8_t> read_tif(std::span<const uint8_t> data) {
-    if (read<decltype(SIGNATURE_BIG)>(data) == SIGNATURE_BIG) [[unlikely]] {
+    if (peek<decltype(SIGNATURE_BIG)>(data) == SIGNATURE_BIG) [[unlikely]] {
         return read_tif<std::endian::big>(data);
-    } else if (read<decltype(SIGNATURE_LITTLE)>(data) == SIGNATURE_LITTLE) [[unlikely]] {
+    } else if (peek<decltype(SIGNATURE_LITTLE)>(data) == SIGNATURE_LITTLE) [[unlikely]] {
         return read_tif<std::endian::little>(data);
     }
     return {};

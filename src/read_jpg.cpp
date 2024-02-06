@@ -2,8 +2,11 @@
 #include "utils.h"
 
 namespace {
-    uint16_t read(const std::span<const uint8_t> data) {
+    uint16_t read(std::span<const uint8_t>& data) {
         return ::read<uint16_t, std::endian::big>(data);
+    }
+    uint16_t peek(const std::span<const uint8_t> data) {
+        return ::peek<uint16_t, std::endian::big>(data);
     }
 
     // SOI in big-endian
@@ -11,7 +14,7 @@ namespace {
 }
 
 std::span<const uint8_t> read_jpg(std::span<const uint8_t> data) {
-    if (read<decltype(SIGNATURE)>(data) != SIGNATURE) [[likely]] {
+    if (peek<decltype(SIGNATURE)>(data) != SIGNATURE) [[likely]] {
         return {};
     }
 
@@ -32,7 +35,6 @@ std::span<const uint8_t> read_jpg(std::span<const uint8_t> data) {
                 if (!found_sos) {
                     return {};
                 }
-                data = subspan(data, sizeof(uint16_t));
                 break;
             case 0xFFE0: // APP0
             case 0xFFE1: // APP1 exif
@@ -65,12 +67,10 @@ std::span<const uint8_t> read_jpg(std::span<const uint8_t> data) {
             case 0xFFCE: // SOF14
             case 0xFFCF: // SOF15
             case 0xFFFE: // COM
-                data = subspan(data, sizeof(uint16_t));
-                data = subspan(data, read(data));
+                skip<uint8_t>(data, peek(data));
                 break;
             case 0xFFDD: // DRI
-                data = subspan(data, sizeof(uint16_t));
-                data = subspan(data, sizeof(uint16_t));
+                skip<uint16_t>(data);
                 break;
             case 0xFFD0: // RST0
             case 0xFFD1: // RST1
@@ -80,29 +80,24 @@ std::span<const uint8_t> read_jpg(std::span<const uint8_t> data) {
             case 0xFFD5: // RST5
             case 0xFFD6: // RST6
             case 0xFFD7: // RST7
-                data = subspan(data, sizeof(uint16_t));
                 break;
             case 0xFFD8: // SOI
                 if (found_soi) {
                     return {};
                 }
                 found_soi = true;
-                data = subspan(data, sizeof(uint16_t));
                 break;
             case 0xFFC4: // DHT
                 found_dht = true;
-                data = subspan(data, sizeof(uint16_t));
-                data = subspan(data, read(data));
+                skip<uint8_t>(data, peek(data));
                 break;
             case 0xFFDB: // DQT
                 found_dqt = true;
-                data = subspan(data, sizeof(uint16_t));
-                data = subspan(data, read(data));
+                skip<uint8_t>(data, peek(data));
                 break;
             case 0xFFCC: // DAC
                 found_dac = true;
-                data = subspan(data, sizeof(uint16_t));
-                data = subspan(data, read(data));
+                skip<uint8_t>(data, peek(data));
                 break;
             case 0xFFD9: // EOI
                 if (
@@ -113,20 +108,17 @@ std::span<const uint8_t> read_jpg(std::span<const uint8_t> data) {
                     return {};
                 }
                 found_eoi = true;
-                data = subspan(data, sizeof(uint16_t));
                 break;
             case 0xFFDA: // SOS
                 if (found_sos) {
                     return {};
                 }
                 found_sos = true;
-                data = subspan(data, sizeof(uint16_t));
                 break;
             default:
                 if (!found_sos) {
                     return {};
                 }
-                data = subspan(data, sizeof(uint16_t));
                 break;
         }
     }

@@ -3,7 +3,7 @@
 #include <cctype>
 
 namespace {
-    uint32_t read(const std::span<const uint8_t> data) {
+    uint32_t read(std::span<const uint8_t>& data) {
         return ::read<uint32_t, std::endian::big>(data);
     }
 
@@ -54,7 +54,7 @@ namespace {
 }
 
 std::span<const uint8_t> read_png(std::span<const uint8_t> data) {
-    if (read<decltype(SIGNATURE)>(data) != SIGNATURE) [[likely]] {
+    if (peek<decltype(SIGNATURE)>(data) != SIGNATURE) [[likely]] {
         return {};
     }
 
@@ -62,19 +62,17 @@ std::span<const uint8_t> read_png(std::span<const uint8_t> data) {
 
     // based on https://en.wikipedia.org/wiki/PNG
 
-    data = subspan(data, sizeof(uint64_t));
+    skip<decltype(SIGNATURE)>(data);
 
     bool found_ihdr = false;
     bool found_idat = false;
     bool found_iend = false;
     while (!found_iend && !data.empty()) {
         const auto length = read(data);
-        data = subspan(data, sizeof(uint32_t));
-        const auto type = read(data);
         const auto crcdata = subspan(data, 0, sizeof(uint32_t) + length);
-        data = subspan(data, sizeof(uint32_t) + length);
+        const auto type = read(data);
+        data = subspan(data, length);
         const auto crc = read(data);
-        data = subspan(data, sizeof(uint32_t));
         switch (type) {
             case 0x49484452: // IHDR
                 if (found_ihdr) {

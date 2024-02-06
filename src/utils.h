@@ -7,16 +7,12 @@
 #include <type_traits>
 
 template<typename T> std::span<T> subspan(const std::span<T> span, std::size_t offset, std::size_t count = std::dynamic_extent) {
-    const auto n_offset = std::min(offset, span.size());
+    const auto n_offset_start = std::min(offset, span.size());
+    const auto n_offset_end   = std::max(n_offset_start, std::min(offset + count, span.size()));
     if (count == std::dynamic_extent) [[likely]] {
-        return span.subspan(n_offset);
+        return span.subspan(n_offset_start);
     }
-    const auto n_offset_size = std::max(
-        n_offset,
-        std::min(offset + count, span.size())
-    ) - n_offset;
-
-    return span.subspan(n_offset, n_offset_size);
+    return span.subspan(n_offset_start, n_offset_end - n_offset_start);
 }
 
 template<typename T, std::endian source, std::endian target = std::endian::native> constexpr T convert(const T value) {
@@ -26,13 +22,23 @@ template<typename T, std::endian source, std::endian target = std::endian::nativ
     return std::byteswap(value);
 }
 
-template<typename T, std::endian endian = std::endian::native> T read(const std::span<const uint8_t> data) {
+template<typename T, std::endian endian = std::endian::native> T peek(const std::span<const uint8_t> data) {
     if (data.size() < sizeof(T)) [[unlikely]] {
-        return 0;
+        return T{};
     }
     typename std::remove_cvref<T>::type value;
     std::memcpy(&value, data.data(), sizeof(T));
     return convert<T, endian, std::endian::native>(value);
+}
+
+template<typename T, std::endian endian = std::endian::native> T read(std::span<const uint8_t>& data) {
+    T tmp = peek<T, endian>(data);
+    data = subspan(data, sizeof(T));
+    return tmp;
+}
+
+template<typename T> void skip(std::span<const uint8_t>& data, size_t n = 1) {
+    data = subspan(data, sizeof(T) * n);
 }
 
 #endif
