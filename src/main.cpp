@@ -49,14 +49,12 @@ enum MODE {
 
 void save(int fd, int img_count, const uint8_t* start, const std::span<const uint8_t> data, const char* ext);
 
-bool atty_stderr = false;
-bool atty_stdout = false;
+bool atty_stderr = isatty(fileno(stderr));
+bool atty_stdout = isatty(fileno(stdout));
 MODE mode = COPY_FILE_RANGE;
 std::string last_print;
 
 int main(int argc, const char** argv) {
-    atty_stderr = isatty(fileno(stderr));
-    atty_stdout = isatty(fileno(stdout));
     if (argc < 2) {
         if (argc > 0) {
             fprintf(stderr, "%s <disk-image>\n", argv[0]);
@@ -84,7 +82,7 @@ int main(int argc, const char** argv) {
     signal(SIGALRM, handle_alarm);
 
     size_t found = 0;
-    //size_t found_jpg = 0;
+    size_t found_jpg = 0;
     size_t found_png = 0;
     size_t found_tif = 0;
     size_t found_gif = 0;
@@ -126,7 +124,7 @@ int main(int argc, const char** argv) {
             break;
         }
 
-        /*{
+        {
             auto img_data = read_jpg(subspan(span, 0, MAX_SIZE));
             if (!img_data.empty()) {
                 update_print = true;
@@ -134,7 +132,7 @@ int main(int argc, const char** argv) {
                 ++found;
                 ++found_jpg;
             }
-        }*/
+        }
         {
             auto img_data = read_png(subspan(span, 0, MAX_SIZE));
             if (!img_data.empty()) {
