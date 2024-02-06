@@ -31,10 +31,13 @@ namespace {
     template<std::endian endian>
     bool read_ifd(std::span<const uint8_t> start, std::span<const uint8_t> data, uint32_t& length, bool& has_image_data, bool private_ifd = false) {
         // read directory
+        bool found_end = false;
+
         while (!data.empty()) {
             auto offset = read<uint32_t, endian>(data);
             if (offset == 0) {
                 // nothing left to read
+                found_end = true;
                 break;
             }
             if ((offset % sizeof(uint16_t)) != 0) {
@@ -305,7 +308,8 @@ namespace {
                 has_image_data = true;
             }
         }
-        return true;
+
+        return found_end;
     }
 
     template<std::endian endian>
