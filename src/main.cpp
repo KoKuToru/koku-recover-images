@@ -124,7 +124,24 @@ int main(int argc, const char** argv) {
             break;
         }
 
+        // quick skip
         {
+            constexpr auto FIRST_BYTES = std::array{
+                FIRST_BYTE_JPG,
+                FIRST_BYTE_PNG,
+                FIRST_BYTE_GIF,
+                FIRST_BYTE_TIF_LITTLE,
+                FIRST_BYTE_TIF_BIG
+            };
+            auto tmp = subspan(span, 0, MAX_SIZE);
+            span = span.subspan(std::distance(tmp.begin(), std::find_first_of(tmp.begin(), tmp.end(), FIRST_BYTES.begin(), FIRST_BYTES.end())));
+            if (span.empty()) {
+                continue;
+            }
+        }
+
+
+        if (span[0] == FIRST_BYTE_JPG){
             auto img_data = read_jpg(subspan(span, 0, MAX_SIZE));
             if (!img_data.empty()) {
                 update_print = true;
@@ -133,7 +150,7 @@ int main(int argc, const char** argv) {
                 ++found_jpg;
             }
         }
-        {
+        if (span[0] == FIRST_BYTE_PNG) {
             auto img_data = read_png(subspan(span, 0, MAX_SIZE));
             if (!img_data.empty()) {
                 update_print = true;
@@ -142,7 +159,7 @@ int main(int argc, const char** argv) {
                 ++found_png;
             }
         }
-        {
+        if (span[0] == FIRST_BYTE_TIF_BIG || span[0] == FIRST_BYTE_TIF_LITTLE) {
             auto img_data = read_tif(subspan(span, 0, MAX_SIZE));
             if (!img_data.empty()) {
                 update_print = true;
@@ -151,7 +168,7 @@ int main(int argc, const char** argv) {
                 ++found_tif;
             }
         }
-        {
+        if (span[0] == FIRST_BYTE_GIF) {
             auto img_data = read_gif(subspan(span, 0, MAX_SIZE));
             if (!img_data.empty()) {
                 update_print = true;
