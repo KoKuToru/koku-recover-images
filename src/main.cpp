@@ -140,7 +140,6 @@ int main(int argc, const char** argv) {
             }
         }
 
-
         if (span[0] == FIRST_BYTE_JPG){
             auto img_data = read_jpg(subspan(span, 0, MAX_SIZE));
             if (!img_data.empty()) {
@@ -191,8 +190,9 @@ int main(int argc, const char** argv) {
 void save(int fd, int img_count, const uint8_t* start, const std::span<const uint8_t> data, const char* ext) {
     // save the data
     auto offset = std::distance(start, data.data());
-    auto dir = std::format("{:08x}", img_count / 512);
-    auto name = std::format("{}/{:016x}.{}", dir, offset, ext);
+
+    auto dir = std::format("{:08d}", img_count / 4096);
+    auto name = std::format("{}/{:020d}.{}", dir, offset, ext);
 
     fprintf(stderr, atty_stderr ? "\33[2K\r" : "\r");
 
