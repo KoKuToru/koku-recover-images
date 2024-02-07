@@ -320,6 +320,11 @@ namespace {
             return {};
         }
 
+        if (length > start.length) {
+            // larger than allowed (but found end)
+            return {};
+        }
+
         // found something
         data = subspan(start, 0, length);
         return data;
