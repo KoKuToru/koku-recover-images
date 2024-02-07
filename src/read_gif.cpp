@@ -121,6 +121,10 @@ std::span<const uint8_t> read_gif(std::span<const uint8_t> data) {
         }
     }
 
+    if (!found_trailer) {
+        return {};
+    }
+
     auto end = data.data();
 
     return { start, end };
