@@ -81,6 +81,9 @@ std::span<const uint8_t> read_jpg(std::span<const uint8_t> data) {
             case 0xFFD5: // RST5
             case 0xFFD6: // RST6
             case 0xFFD7: // RST7
+                if (!found_sos) {
+                    return {};
+                }
                 break;
             case 0xFFD8: // SOI
                 if (found_soi) {
