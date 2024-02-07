@@ -33,12 +33,21 @@ void handle_alarm( int sig ) {
 
 std::string format_bytes(size_t size, bool atty) {
     double v = size;
-    v /= (1024 * 1024);
-    if (v < 1024) {
-        return std::vformat(atty ? "\33[1m{:.2f}\33[0mMiB" : "{:.2f}MiB", std::make_format_args(v));
+    const char* u = nullptr;
+    if (v < 1024 * 1024) {
+        v /= 1024;
+        u = "KiB";
+    } else if (v < 1024 * 1024 * 1024) {
+        v /= 1024 * 1024;
+        u = "MiB";
+    } else {
+        v /= 1024 * 1024 * 1024;
+        u = "GiB";
     }
-    v /= 1024;
-    return std::vformat(atty ? "\33[1m{:.2f}\33[0mGiB" : "{:.2f}GiB", std::make_format_args(v));
+    if (atty) {
+        return std::format("\33[1m{:7.2f}\33[0m{}", v, u);
+    }
+    return std::format("{:.2f}{}", v, u);
 }
 
 enum MODE {
@@ -57,23 +66,24 @@ std::string last_print;
 int main(int argc, const char** argv) {
     if (argc < 2) {
         if (argc > 0) {
-            fprintf(stderr, "%s <disk-image>\n", argv[0]);
+            fprintf(stderr, "Usage: %s <disk-image>\n", argv[0]);
         } else {
-            fprintf(stderr, "koku_recoverjpg <disk-image>\n");
+            fprintf(stderr, "Usage: koku-recover-images <disk-image>\n");
         }
-        return -1;
+        fprintf(stderr, "Description:\n\tExtracts unfragmented JPEGs, PNGs, GIFs and TIFFs from <disk-image>\n");
+        exit(-1);
     }
     auto fd = open(argv[1], O_RDONLY);
     if (fd == -1) {
         fprintf(stderr, "couldn't open file %s\n", argv[1]);
-        return -1;
+        exit(-1);
     }
     struct stat  sb;
     fstat(fd, &sb);
     auto addr = mmap(nullptr, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (addr == MAP_FAILED) {
         fprintf(stderr, "couldn't memory map file %s\n", argv[1]);
-        return -1;
+        exit(-1);
     }
     madvise(addr, sb.st_size, MADV_DONTDUMP);
     madvise(addr, sb.st_size, MADV_SEQUENTIAL);
@@ -101,17 +111,13 @@ int main(int argc, const char** argv) {
             madvise((void*)last, (2 * MAX_SIZE) / pagesize * pagesize, MADV_WILLNEED);
         }
 
-        if (update_print || span.empty()) {
+        if (atty_stderr && (update_print || span.empty())) {
             update_print = false;
             const auto offset = std::distance(start, span.data());
-            last_print = std::vformat(
-                atty_stderr ? "\33[2K\r\33[1m{:3.2f}\33[0m% {}/{} \33[1m{}\33[0m images" : "\r{:3.2f}% {}/{} {} images",
-                std::make_format_args(
-                    offset / double(sb.st_size) * 100,
-                    format_bytes(offset, atty_stderr), format_bytes(sb.st_size, atty_stderr),
-                    found
-                )
-            );
+            const auto percent = offset / double(sb.st_size) * 100;
+            const auto pos = format_bytes(offset, atty_stderr);
+            const auto pos_max = format_bytes(sb.st_size, atty_stderr);
+            last_print = std::format("\33[2K\r\33[1m{:6.2f}\33[0m% {}/{} \33[1m{:11d}\33[0m images", percent, pos, pos_max, found);
             fprintf(stderr, "%s", last_print.c_str());
             fflush(stderr);
             if (!alarm_running) {
@@ -194,19 +200,34 @@ void save(int fd, int img_count, const uint8_t* start, const std::span<const uin
     auto dir = std::format("{:08d}", img_count / 4096);
     auto name = std::format("{}/{:020d}.{}", dir, offset, ext);
 
-    fprintf(stderr, atty_stderr ? "\33[2K\r" : "\r");
-
-    auto size = format_bytes(data.size(), atty_stdout);
-    fprintf(stdout, "%s %*s\n", name.c_str(), (atty_stdout ? 10 : 0) + 8, size.c_str());
-    fprintf(stderr, "%s", last_print.c_str());
-    fflush(stderr);
+    if (atty_stdout) {
+        if (atty_stderr) {
+            fprintf(stderr, "\33[2K\r");
+            fflush(stderr);
+        }
+        fprintf(stdout, "%s", name.c_str());
+        if (atty_stderr) {
+            auto size = format_bytes(data.size(), atty_stdout);
+            fflush(stdout);
+            fprintf(stderr, " %s\n%s", size.c_str(), last_print.c_str());
+            fflush(stderr);
+        } else {
+            fprintf(stdout, "\n");
+        }
+    } else {
+        fprintf(stdout, "%s\n", name.c_str());
+    }
 
     mkdir(dir.c_str(), 0750);
     auto fd_jpg = open(name.c_str(), O_WRONLY|O_CREAT, 0640);
     if (fd_jpg == -1) {
+        if (atty_stderr) {
+            fprintf(stderr, "\33[2K\r");
+        }
         fprintf(stderr, "couldn't create new file %s\n", name.c_str());
         exit(-1);
     }
+
     if (mode == COPY_FILE_RANGE) {
         loff_t off_in  = offset;
         loff_t off_out = 0;
@@ -253,6 +274,9 @@ void save(int fd, int img_count, const uint8_t* start, const std::span<const uin
             }
             if (res == -1) {
                 unlink(name.c_str());
+                if (atty_stderr) {
+                    fprintf(stderr, "\33[2K\r");
+                }
                 fprintf(stderr, "couldn't write to file %s\n", name.c_str());
                 exit(-1);
             }
