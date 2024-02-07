@@ -30,6 +30,7 @@ std::span<const uint8_t> read_jpg(std::span<const uint8_t> data) {
     bool found_soi = false;
     bool found_dac = false;
     while (!found_eoi && !data.empty()) {
+        auto before_read = data;
         switch (read(data)) {
             case 0xFF00: // stuffed 0xFF in SOS
                 if (!found_sos) {
@@ -119,6 +120,8 @@ std::span<const uint8_t> read_jpg(std::span<const uint8_t> data) {
                 if (!found_sos) {
                     return {};
                 }
+                // seek back by 1 byte
+                data = subspan(before_read, 1);
                 break;
         }
     }
