@@ -22,7 +22,7 @@
 #include "read_gif.h"
 #include "utils.h"
 
-constexpr ssize_t MAX_SIZE = 128 * 1024 * 1024;
+constexpr ssize_t MAX_SIZE = 1 * 1024 * 1024 * 1024; // 1GiB
 
 bool update_print = true;
 bool alarm_running = false;
