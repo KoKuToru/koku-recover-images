@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(recoverimages)
+project(koku-recover-images)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
-SET(CMAKE_CXX_FLAGS_DEBUG "-g3 -Og")
+SET(CMAKE_CXX_FLAGS_DEBUG "-g3")
 
 file(GLOB_RECURSE SOURCE_FILES CONFIGURE_DEPENDS src/*.cpp src/*.h)
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
