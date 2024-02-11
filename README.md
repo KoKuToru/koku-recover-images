@@ -5,9 +5,9 @@
 this tool tries to recover **unfragmented** JPEGs, PNGs, TIFFs, GIFs, WEBPs from a binaryfile.\
 if possible it verifies the validity of the file:
 
-    * required data is present
-    * data has correct values if the image format has something i can check..
-    * comparing CRCs if the image format has them..
+* required data is present
+* data has correct values if the image format has something i can check..
+* comparing CRCs if the image format has them..
 
 ## installation
 
