@@ -270,7 +270,6 @@ namespace {
                             for (uint32_t j = 0; j < data_count; ++j) {
                                 uint32_t o = data_type == 3 ? read<uint16_t, endian>(s) : read<uint32_t, endian>(s);
                                 ImageDataOffsets.push_back(o);
-                                s = subspan(s, data_type == 3 ? sizeof(uint16_t) : sizeof(uint32_t));
                             }
                         } break;
 
@@ -281,7 +280,6 @@ namespace {
                             for (uint32_t j = 0; j < data_count; ++j) {
                                 uint32_t o = data_type == 3 ? read<uint16_t, endian>(s) : read<uint32_t, endian>(s);
                                 ImageDataByteCounts.push_back(o);
-                                s = subspan(s, data_type == 3 ? sizeof(uint16_t) : sizeof(uint32_t));
                             }
                         } break;
                     }
@@ -320,13 +318,12 @@ namespace {
             return {};
         }
 
-        if (length > start.length) {
-            // larger than allowed (but found end)
-            return {};
-        }
-
         // found something
         data = subspan(start, 0, length);
+        if (data.size() != length) {
+            // wrong size
+            return {};
+        }
         return data;
     }
 }
