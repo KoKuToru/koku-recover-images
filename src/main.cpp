@@ -146,41 +146,37 @@ int main(int argc, const char** argv) {
             }
         }
 
-        if (span[0] == FIRST_BYTE_JPG){
-            auto img_data = read_jpg(subspan(span, 0, MAX_SIZE));
-            if (!img_data.empty()) {
-                update_print = true;
-                save(fd, found, start, img_data, "jpg");
-                ++found;
-                ++found_jpg;
-            }
+        decltype(span) img_data = subspan(span, 0, MAX_SIZE);
+        const char* ext = nullptr;
+        size_t* found_ext;
+        switch (span[0]) {
+            case FIRST_BYTE_JPG:
+                img_data = read_jpg(img_data);
+                ext = "jpg";
+                found_ext = &found_jpg;
+                break;
+            case FIRST_BYTE_PNG:
+                img_data = read_png(img_data);
+                ext = "png";
+                found_ext = &found_png;
+                break;
+            case FIRST_BYTE_TIF_BIG:
+            case FIRST_BYTE_TIF_LITTLE:
+                img_data = read_tif(img_data);
+                ext = "tif";
+                found_ext = &found_tif;
+                break;
+            case FIRST_BYTE_GIF:
+                img_data = read_gif(img_data);
+                ext = "gif";
+                found_ext = &found_gif;
+                break;
         }
-        if (span[0] == FIRST_BYTE_PNG) {
-            auto img_data = read_png(subspan(span, 0, MAX_SIZE));
-            if (!img_data.empty()) {
-                update_print = true;
-                save(fd, found, start, img_data, "png");
-                ++found;
-                ++found_png;
-            }
-        }
-        if (span[0] == FIRST_BYTE_TIF_BIG || span[0] == FIRST_BYTE_TIF_LITTLE) {
-            auto img_data = read_tif(subspan(span, 0, MAX_SIZE));
-            if (!img_data.empty()) {
-                update_print = true;
-                save(fd, found, start, img_data, "tif");
-                ++found;
-                ++found_tif;
-            }
-        }
-        if (span[0] == FIRST_BYTE_GIF) {
-            auto img_data = read_gif(subspan(span, 0, MAX_SIZE));
-            if (!img_data.empty()) {
-                update_print = true;
-                save(fd, found, start, img_data, "gif");
-                ++found;
-                ++found_gif;
-            }
+        if (ext && !img_data.empty()) {
+            update_print = true;
+            save(fd, found, start, img_data, ext);
+            ++found;
+            ++(*found_ext);
         }
 
         span = subspan(span, sizeof(unsigned char));
