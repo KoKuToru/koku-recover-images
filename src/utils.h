@@ -22,7 +22,8 @@ template<typename T, std::endian source, std::endian target = std::endian::nativ
     return std::byteswap(value);
 }
 
-template<typename T, std::endian endian = std::endian::native> T peek(const std::span<const uint8_t> data) {
+template<typename T, std::endian endian = std::endian::native> T peek(std::span<const uint8_t> data, size_t offset = 0) {
+    data = subspan(data, offset);
     if (data.size() < sizeof(T)) [[unlikely]] {
         return T{};
     }

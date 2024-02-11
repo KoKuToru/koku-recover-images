@@ -20,6 +20,7 @@
 #include "read_png.h"
 #include "read_tif.h"
 #include "read_gif.h"
+#include "read_webp.h"
 #include "utils.h"
 
 constexpr ssize_t MAX_SIZE = 1 * 1024 * 1024 * 1024; // 1GiB
@@ -96,6 +97,7 @@ int main(int argc, const char** argv) {
     size_t found_png = 0;
     size_t found_tif = 0;
     size_t found_gif = 0;
+    size_t found_webp = 0;
 
     const auto start = span.data();
     auto last = start;
@@ -137,7 +139,8 @@ int main(int argc, const char** argv) {
                 FIRST_BYTE_PNG,
                 FIRST_BYTE_GIF,
                 FIRST_BYTE_TIF_LITTLE,
-                FIRST_BYTE_TIF_BIG
+                FIRST_BYTE_TIF_BIG,
+                FIRST_BYTE_WEBP
             };
             auto tmp = subspan(span, 0, MAX_SIZE);
             span = span.subspan(std::distance(tmp.begin(), std::find_first_of(tmp.begin(), tmp.end(), FIRST_BYTES.begin(), FIRST_BYTES.end())));
@@ -171,6 +174,11 @@ int main(int argc, const char** argv) {
                 ext = "gif";
                 found_ext = &found_gif;
                 break;
+            case FIRST_BYTE_WEBP:
+                img_data = read_webp(img_data);
+                ext = "webp";
+                found_ext = &found_webp;
+                break;
         }
         if (ext && !img_data.empty()) {
             update_print = true;
@@ -201,7 +209,7 @@ void save(int fd, int img_count, const uint8_t* start, const std::span<const uin
             fprintf(stderr, "\33[2K\r");
             fflush(stderr);
         }
-        fprintf(stdout, "%s", name.c_str());
+        fprintf(stdout, "%-34s", name.c_str());
         if (atty_stderr) {
             auto size = format_bytes(data.size(), atty_stdout);
             fflush(stdout);
